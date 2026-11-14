@@ -1,0 +1,505 @@
+let usersList = JSON.parse(localStorage.getItem('taskbd_users_db')) || [];
+let loggedInUserKey = localStorage.getItem('taskbd_logged_key') || null;
+
+let withdrawRequests = JSON.parse(localStorage.getItem('taskbd_withdraws')) || [];
+let depositRequests = JSON.parse(localStorage.getItem('taskbd_deposits')) || [];
+
+let chatMessages = JSON.parse(localStorage.getItem('taskbd_chats')) || [
+    { sender: 'admin', text: 'আসসালামু আলাইকুম! Task Bd Official এ আপনাকে স্বাগতম।', time: 'Now' }
+];
+
+let globalNotice = localStorage.getItem('taskbd_global_notice') || "🎉 বিশেষ অফার: স্ক্র্যাচ কার্ড ঘষে ও ইউনিক গল্প পড়ে ফ্রি ইনকাম করুন এবং বিকাশ, নগদ ও রকেটের প্রথম ডিপোজিটে ১০০% বোনাস নিন! 🚀";
+
+let currentTab = 'home';
+let authMode = 'login';
+let selectedPlanForPurchase = null;
+
+let currentMath = { a: 0, b: 0, ans: 0 };
+let currentQuizIndex = 0;
+
+const quizQuestions = [
+    { q: "বাংলাদেশের রাজধানীর নাম কী?", options: ["খুলনা", "ঢাকা", "চট্টগ্রাম"], ans: "ঢাকা" },
+    { q: "বাংলাদেশের জাতীয় ফুল কোনটি?", options: ["গোলাপ", "শাপলা", "জবা"], ans: "শাপলা" },
+    { q: "এক সপ্তাহে কয়দিন হয়?", options: ["৫ দিন", "৭ দিন", "১০ দিন"], ans: "৭ দিন" },
+    { q: "সূর্য কোন দিকে উদিত হয়?", options: ["পশ্চিম", "উত্তর", "পূর্ব"], ans: "পূর্ব" }
+];
+
+const shortStories = [
+    { 
+        id: 1, 
+        title: "১. ঘড়ির দোকানের গোপন রহস্য", 
+        reward: 5, 
+        shortDesc: "এক বৃদ্ধ ঘড়ি বিক্রেতা শহরের সবচেয়ে ধনী ব্যক্তিকে একটি অদ্ভুত ঘড়ি উপহার দিলেন, যার টিকটিক শব্দে লুকিয়ে ছিল জীবনের আসল সত্য।",
+        fullDesc: "শহরের সবচেয়ে ধনী ব্যবসায়ী হারুন সাহেব অহংকারে সবসময় মাটিতে পা ফেলতেন না। একদিন তিনি এক বৃদ্ধ ঘড়িওয়ালার দোকানে গেলেন। বৃদ্ধ তাকে একটি সাধারণ ঘড়ি দিয়ে বললেন, 'এই ঘড়িটি আপনাকে প্রতিদিন মনে করিয়ে দেবে যে আপনার অতীতে যা গেছে তা আর ফিরবে না, আর ভবিষ্যৎ কেবল অনিশ্চিত।' হারুন সাহেব ঘড়িটির দিকে তাকিয়ে বুঝতে পারলেন, টাকা-পয়সা সবকিছুর মালিক হতে পারে কিন্তু সময়ের এক সেকেন্ডও কিনতে পারে না। সেদিন থেকেই তার অহংকার চূর্ণ হয়ে গেল এবং তিনি গরিবদের সাহায্য করতে শুরু করলেন।" 
+    },
+    { 
+        id: 2, 
+        title: "২. রাজকুমার ও অদৃশ্য পাখি", 
+        reward: 5, 
+        shortDesc: "রাজকুমার এক জাদুকরী পাখির খোঁজে বের হলেন, যা মানুষের মন পড়তে পারত। কিন্তু জঙ্গলে গিয়ে তিনি যা পেলেন তা তাকে অবাক করে দিল।",
+        fullDesc: "এক রাজ্যের রাজকুমার খুব অহংকারী ছিলেন। তিনি এমন এক জাদুকরী পাখির সন্ধান করতে লাগলেন যার গান শুনলে মানুষের মনের সব পাপ ধুয়ে যায়। গভীর জঙ্গলে গিয়ে তিনি এক অন্ধ সাধুর দেখা পেলেন। সাধু তাকে বললেন, 'বাবা, কোনো পাখি খুঁজতে হবে না। তোমার নিজের মনের ভেতরে যে অহংকার ও রাগ পুষে রেখেছ, সেই পাখিটাকে আগে হত্যা করো। তবেই শান্তি পাবে।' রাজকুমার নিজের ভুল বুঝতে পারলেন এবং রাজ্যে ফিরে এসে প্রজাদের সাথে ন্যায়বিচার ও নম্রতার সাথে মিশতে লাগলেন।" 
+    },
+    { 
+        id: 3, 
+        title: "৩. তিন বন্ধুর বিশ্বাসের পরীক্ষা", 
+        reward: 5, 
+        shortDesc: "তিন বন্ধু বিপদের দিনে একে অপরকে পরীক্ষা করতে গিয়ে এমন এক অদ্ভুত পরিস্থিতির মুখোমুখি হলো যা তাদের বন্ধুত্ব চিরতরে বদলে দিল।",
+        fullDesc: "রাকিব, সজীব ও আকাশ তিন জেসের বন্ধু। তারা পণ করল যে ভবিষ্যতে যারাই বিপদে পড়ুক না কেন, একে অপরকে ত্যাগ করবে না। একদিন ব্যবসার কাজে গিয়ে রাকিব বড় ধরনের ঋণের মুখে পড়ে দেউলিয়া হয়ে গেল। সজীব ও আকাশ তখন নিজেদের জমানো সব টাকা ভেঙে রাকিবকে আবার নতুন করে ব্যবসা দাঁড় করিয়ে দিল। বিপদের দিনে যারা পাশে দাঁড়ায়, তারাই প্রকৃত বন্ধু—এই সত্য সেদিন তিন বন্ধু হাড়ে হাড়ে টের পেয়েছিল।" 
+    },
+    { 
+        id: 4, 
+        title: "৪. অন্ধ ভিক্ষুক ও আলোর ঝরনা", 
+        reward: 5, 
+        shortDesc: "রাস্তার ধারের এক অন্ধ ভিক্ষুকের কাছে মানুষ শুধু টাকা দিত না, বরং এমন কিছু শুনত যা তাদের জীবন বদলে দিত।",
+        fullDesc: "শহরের ব্যস্ত মোড়ে এক অন্ধ ভিক্ষুক বসে থাকত। সে যখনই কাউকে ভিক্ষা দিতে দেখত, তখন বলত—'ভাই, আমার চোখ অন্ধ হলেও আমার অন্তর খোলা। তোমার পকেট ভরপুর হলেও তোমার মন কি শান্ত আছে?' তার এই গভীর দার্শনিক কথাগুলো শুনে বড় বড় ব্যবসায়ীরাও থমকে দাঁড়াতেন। তারা বুঝতে পারলেন, বাহ্যিক অন্ধত্ব বড় নয়, মনের অন্ধত্বই মানুষের আসল পরাজয়।" 
+    }
+];
+
+const funnyJokes = [
+    "১. শিক্ষক: বলতো পল্টু, ‘চুরি বিদ্যা মহা বিদ্যা যদি না পড়ে ধরা’—কথাটি দ্বারা কী বোঝানো হয়েছে? \nপল্টু: স্যার, এর মানে হলো ধরা না খেলে সবাই আইনজ্ঞ, আর ধরা পড়লে আসামি!",
+    "২. বল্টু ইন্টারভিউ বোর্ডে গিয়ে বসল। \nবোর্ড চেয়্যারম্যান: আপনার সবচেয়ে বড় গুণ কী? \nবল্টু: স্যার, আমি যেকোনো কঠিন পরিস্থিতিতে দ্রুত ঘুমিয়ে পড়তে পারি!",
+    "৩. শিক্ষক: বলতো পৃথিবীর সবচেয়ে ভারী জিনিস কোনটি? \nছাত্র: স্যার, পরীক্ষার খাতায় না জানা প্রশ্নের উত্তরগুলো!"
+];
+
+const plansData = [
+    { id: 1, name: 'VIP 1 (৫০০ টাকা)', price: 500, daily: 70 },
+    { id: 2, name: 'VIP 2 (১০০০ টাকা)', price: 1000, daily: 150 },
+    { id: 3, name: 'VIP 3 (২০০০ টাকা)', price: 2000, daily: 320 },
+    { id: 4, name: 'VIP 4 (৫০০০ টাকা)', price: 5000, daily: 850 }
+];
+
+function saveData() {
+    localStorage.setItem('taskbd_users_db', JSON.stringify(usersList));
+    localStorage.setItem('taskbd_logged_key', loggedInUserKey);
+    localStorage.setItem('taskbd_withdraws', JSON.stringify(withdrawRequests));
+    localStorage.setItem('taskbd_deposits', JSON.stringify(depositRequests));
+    localStorage.setItem('taskbd_chats', JSON.stringify(chatMessages));
+    localStorage.setItem('taskbd_global_notice', globalNotice);
+}
+
+function playNotificationSound() {
+    try {
+        let audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let oscillator = audioContext.createOscillator();
+        let gainNode = audioContext.createGain();
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(587.33, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.15);
+    } catch(e) {}
+}
+
+function showLiveToast(title, desc) {
+    let toast = document.getElementById('live-toast');
+    let tTitle = document.getElementById('toast-title');
+    let tDesc = document.getElementById('toast-desc');
+    if(!toast || !tTitle || !tDesc) return;
+
+    tTitle.innerText = title;
+    tDesc.innerText = desc;
+    toast.classList.remove('translate-y-24', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+
+    setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-24', 'opacity-0');
+    }, 4500);
+}
+
+function getCurrentUser() {
+    let u = usersList.find(u => u.identifier === loggedInUserKey) || null;
+    if(u) {
+        let todayStr = new Date().toDateString();
+        if(u.lastResetDate !== todayStr) {
+            u.videoDone = false;
+            u.mathDone = false;
+            u.quizDone = false;
+            u.readTaskDone = false;
+            u.checkedInToday = false;
+            u.scratchDoneToday = false;
+            u.readStories = u.readStories || [];
+            u.lastResetDate = todayStr;
+            
+            let lastLogin = u.lastLoginDate || "";
+            let yesterdayStr = new Date(Date.now() - 86400000).toDateString();
+            if(lastLogin === yesterdayStr) {
+                u.streakCount = Math.min((u.streakCount || 0) + 1, 7);
+            } else if(lastLogin !== todayStr) {
+                u.streakCount = 1;
+            }
+            u.lastLoginDate = todayStr;
+            saveData();
+        }
+    }
+    return u;
+}
+
+function switchTab(tab) {
+    if(!loggedInUserKey) { renderAuth(); return; }
+    currentTab = tab;
+    renderContent();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function generateMath() {
+    currentMath.a = Math.floor(Math.random() * 20) + 5;
+    currentMath.b = Math.floor(Math.random() * 15) + 2;
+    currentMath.ans = currentMath.a + currentMath.b;
+}
+
+function toggleTheme() {
+    const body = document.getElementById('body-theme');
+    const icon = document.getElementById('theme-icon');
+    if(body.classList.contains('dark')) {
+        body.classList.remove('dark');
+        body.style.backgroundColor = '#f8fafc';
+        body.style.color = '#0f172a';
+        if(icon) { icon.className = 'fa-solid fa-sun text-sm text-amber-300'; }
+    } else {
+        body.classList.add('dark');
+        body.style.backgroundColor = '#020617';
+        body.style.color = '#f8fafc';
+        if(icon) { icon.className = 'fa-solid fa-moon text-sm'; }
+    }
+}
+
+function addUserNotification(user, title, desc) {
+    user.notifications = user.notifications || [];
+    user.notifications.unshift({
+        id: Date.now(),
+        title: title,
+        desc: desc,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        read: false
+    });
+    saveData();
+    updateNotifBadge(user);
+    playNotificationSound();
+}
+
+function updateNotifBadge(user) {
+    let badge = document.getElementById('notif-badge');
+    if(!badge) return;
+    let unreadCount = (user.notifications || []).filter(n => !n.read).length;
+    if(unreadCount > 0) {
+        badge.innerText = unreadCount;
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
+function openNotificationDetail(notifId) {
+    const user = getCurrentUser();
+    if(!user || !user.notifications) return;
+    let notif = user.notifications.find(n => n.id === notifId);
+    if(notif) {
+        notif.read = true;
+        saveData();
+        updateNotifBadge(user);
+        document.getElementById('notif-modal-title').innerText = notif.title;
+        document.getElementById('notif-modal-time').innerText = "সময়: " + notif.time;
+        document.getElementById('notif-modal-desc').innerText = notif.desc;
+        document.getElementById('notif-detail-modal').classList.remove('hidden');
+        renderContent();
+    }
+}
+
+function closeNotifDetailModal() {
+    document.getElementById('notif-detail-modal').classList.add('hidden');
+}
+
+function openStoryReadMoreModal(storyId) {
+    let s = shortStories.find(item => item.id === storyId);
+    if(!s) return;
+    document.getElementById('story-modal-title').innerText = s.title;
+    document.getElementById('story-modal-desc').innerText = s.fullDesc;
+    
+    let claimBtn = document.getElementById('story-modal-claim-btn');
+    const user = getCurrentUser();
+    let isRead = (user.readStories || []).includes(s.id);
+
+    if(isRead) {
+        claimBtn.innerHTML = "পড়া সম্পন্ন (ক্লেম করা হয়েছে)";
+        claimBtn.disabled = true;
+        claimBtn.className = "w-full bg-slate-800 text-slate-500 py-3 rounded-xl text-xs font-semibold cursor-not-allowed";
+    } else {
+        claimBtn.innerHTML = `গল্পটি পড়ে ${s.reward} টাকা বোনাস নিন`;
+        claimBtn.disabled = false;
+        claimBtn.className = "w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl text-xs font-bold transition shadow";
+        claimBtn.setAttribute('onclick', `claimStoryReward(${s.id}, ${s.reward})`);
+    }
+    document.getElementById('story-readmore-modal').classList.remove('hidden');
+}
+
+function closeStoryReadMoreModal() {
+    document.getElementById('story-readmore-modal').classList.add('hidden');
+}
+
+function checkAndShowPopup(user) {
+    let todayStr = new Date().toDateString();
+    if(user.lastPopupDate !== todayStr) {
+        let modal = document.getElementById('announcement-modal');
+        let textEl = document.getElementById('modal-announcement-text');
+        if(modal && textEl) {
+            textEl.innerText = globalNotice;
+            modal.classList.remove('hidden');
+            user.lastPopupDate = todayStr;
+            saveData();
+        }
+    }
+}
+
+function closeAnnouncementModal() {
+    document.getElementById('announcement-modal').classList.add('hidden');
+}
+
+function getUserBadge(user) {
+    if(user.recharge >= 5000) return '<span class="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full text-[10px] font-bold">Diamond VIP</span>';
+    if(user.recharge >= 1000) return '<span class="bg-amber-500/20 text-amber-400 px-2.5 py-0.5 rounded-full text-[10px] font-bold">Gold VIP</span>';
+    return '<span class="bg-slate-800 text-slate-300 px-2.5 py-0.5 rounded-full text-[10px] font-bold">Member</span>';
+}
+
+function renderContent() {
+    const main = document.getElementById('main-content');
+    const nav = document.getElementById('bottom-nav');
+    const header = document.getElementById('app-header');
+    const floatingChat = document.getElementById('floating-chat-container');
+
+    if(!main) return;
+    if(!loggedInUserKey) {
+        if(nav) nav.classList.add('hidden');
+        if(header) header.classList.add('hidden');
+        if(floatingChat) floatingChat.classList.add('hidden');
+        renderAuth();
+        return;
+    }
+
+    if(nav) nav.classList.remove('hidden');
+    if(header) header.classList.remove('hidden');
+    if(floatingChat) floatingChat.classList.remove('hidden');
+
+    const user = getCurrentUser();
+    if(!user) { logoutUser(); return; }
+
+    updateNotifBadge(user);
+    checkAndShowPopup(user);
+
+    let completedTasksCount = (user.videoDone ? 1 : 0) + (user.mathDone ? 1 : 0) + (user.quizDone ? 1 : 0) + (user.readTaskDone ? 1 : 0);
+    let taskProgressPercent = Math.round((completedTasksCount / 4) * 100);
+    let streak = user.streakCount || 1;
+
+    if(currentTab === 'home') {
+        let streakHtml = '';
+        for(let i=1; i<=7; i++) {
+            let active = i <= streak ? 'bg-emerald-600 text-white font-bold border-emerald-400' : 'bg-slate-950 text-slate-500 border-slate-800';
+            streakHtml += `<div class="flex-1 text-center py-2 px-1 rounded-xl border ${active} text-[10px]"><div class="font-bold">দিন ${i}</div></div>`;
+        }
+
+        main.innerHTML = `
+            <div class="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-5 rounded-2xl shadow-xl text-white space-y-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-blue-100">Task Bd Official</span>
+                    <div>${getUserBadge(user)}</div>
+                </div>
+                <div class="font-extrabold text-sm truncate">${user.identifier}</div>
+                <div class="flex justify-between pt-3 border-t border-white/20">
+                    <div>
+                        <div class="text-xs text-blue-100">মূল ব্যালেন্স (BDT)</div>
+                        <div class="text-2xl font-black">${user.balance.toFixed(2)}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-4 gap-2">
+                <button onclick="switchTab('plans')" class="bg-emerald-600 p-2.5 rounded-xl text-white font-bold text-[11px] flex flex-col items-center justify-center space-y-1"><i class="fa-solid fa-wallet"></i><span>ডিপোজিট</span></button>
+                <button onclick="openWithdrawModal()" class="bg-amber-600 p-2.5 rounded-xl text-white font-bold text-[11px] flex flex-col items-center justify-center space-y-1"><i class="fa-solid fa-money-bill-transfer"></i><span>উইথড্র</span></button>
+                <button onclick="switchTab('spin')" class="bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-slate-200 font-bold text-[11px] flex flex-col items-center justify-center space-y-1"><i class="fa-solid fa-dharmachakra text-purple-400"></i><span>স্পিন</span></button>
+                <button onclick="switchTab('scratch')" class="bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-slate-200 font-bold text-[11px] flex flex-col items-center justify-center space-y-1"><i class="fa-solid fa-ticket text-rose-400"></i><span>স্ক্র্যাচ</span></button>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 p-3.5 rounded-2xl space-y-2 text-xs">
+                <div class="font-bold text-amber-400"><i class="fa-solid fa-fire mr-1 text-orange-500"></i> ৭ দিনের ডেইলি স্ট্র্রিক ক্যালেন্ডার</div>
+                <div class="flex space-x-1">${streakHtml}</div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-2">
+                <div class="flex justify-between text-xs text-slate-300"><span>টাস্ক প্রোগ্রেস</span><span class="text-emerald-400 font-bold">${completedTasksCount}/4 সম্পন্ন</span></div>
+                <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden"><div class="bg-blue-500 h-full" style="width: ${taskProgressPercent}%"></div></div>
+            </div>
+        `;
+    } else if(currentTab === 'tasks') {
+        const rewardPerTask = (user.dailyEarnings / 4).toFixed(2);
+        generateMath();
+
+        main.innerHTML = `
+            <div class="space-y-4 pb-6">
+                <div class="flex items-center space-x-3 border-b border-slate-800 pb-3 mb-2">
+                    <button onclick="switchTab('home')" class="bg-slate-900 text-slate-200 w-9 h-9 rounded-full flex items-center justify-center border border-slate-700"><i class="fa-solid fa-arrow-left text-xs"></i></button>
+                    <h3 class="font-bold text-base text-blue-400">ডেইলি টাস্ক</h3>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3">
+                    <div class="flex justify-between items-center"><h4 class="font-bold text-sm text-white">ভিডিও টাস্ক</h4><span class="text-xs text-emerald-400">+${rewardPerTask} BDT</span></div>
+                    <button onclick="startVideoTask(${rewardPerTask})" ${user.videoDone ? 'disabled' : ''} class="w-full ${user.videoDone ? 'bg-slate-800 text-slate-500' : 'bg-blue-600 text-white'} py-2.5 rounded-xl text-xs font-semibold">${user.videoDone ? 'সম্পন্ন' : 'শুরু করুন'}</button>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3">
+                    <div class="flex justify-between items-center"><h4 class="font-bold text-sm text-white">অংক টাস্ক</h4><span class="text-xs text-emerald-400">+${rewardPerTask} BDT</span></div>
+                    ${user.mathDone ? '<p class="text-xs text-slate-400">সম্পন্ন হয়েছে!</p>' : `<div class="space-y-2"><div class="text-white font-mono">${currentMath.a} + ${currentMath.b} = ?</div><div class="flex space-x-2"><input type="number" id="math-answer-input" class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"><button onclick="submitMathTask(${rewardPerTask})" class="bg-emerald-600 px-4 py-2 rounded-xl text-xs text-white">জমা</button></div></div>`}
+                </div>
+            </div>
+        `;
+    } else if(currentTab === 'plans') {
+        let html = `<div class="space-y-4 pb-6"><div class="flex items-center space-x-3 border-b border-slate-800 pb-3 mb-2"><button onclick="switchTab('home')" class="bg-slate-900 text-slate-200 w-9 h-9 rounded-full flex items-center justify-center border border-slate-700"><i class="fa-solid fa-arrow-left text-xs"></i></button><h3 class="font-bold text-base text-blue-400">ভিআইপি প্ল্যানস</h3></div><div class="space-y-3">`;
+        plansData.forEach(p => {
+            html += `<div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex justify-between items-center"><div><h4 class="font-bold text-sm text-white">${p.name}</h4><p class="text-xs text-slate-400">মূল্য: ${p.price} BDT</p></div><button onclick="openPaymentPage(${p.id})" class="bg-blue-600 text-xs px-4 py-2 rounded-xl font-bold text-white">কিনুন</button></div>`;
+        });
+        main.innerHTML = html + `</div></div>`;
+    } else if(currentTab === 'fun') {
+        let storiesHtml = shortStories.map(s => {
+            let isRead = (user.readStories || []).includes(s.id);
+            return `
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <div class="flex justify-between"><h4 class="font-bold text-blue-400 text-xs">${s.title}</h4><span class="text-[10px] text-emerald-400">+${s.reward} BDT</span></div>
+                    <p class="text-[11px] text-slate-300">${s.shortDesc}</p>
+                    <div class="flex space-x-2">
+                        <button onclick="openStoryReadMoreModal(${s.id})" class="flex-1 bg-blue-600/20 text-blue-300 py-1.5 rounded-lg text-xs">রিড মোর</button>
+                        <button onclick="claimStoryReward(${s.id}, ${s.reward})" ${isRead ? 'disabled' : ''} class="${isRead ? 'bg-slate-800 text-slate-500' : 'bg-purple-600 text-white'} px-3 py-1.5 rounded-lg text-xs font-semibold">${isRead ? 'ক্লেমড' : 'বোনাস নিন'}</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        let jokesHtml = funnyJokes.map(j => `<div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-[11px] text-amber-300 whitespace-pre-line">${j}</div>`).join('');
+
+        main.innerHTML = `
+            <div class="space-y-4 pb-6 text-xs">
+                <div class="flex items-center space-x-3 border-b border-slate-800 pb-3 mb-2">
+                    <button onclick="switchTab('home')" class="bg-slate-900 text-slate-200 w-9 h-9 rounded-full flex items-center justify-center border border-slate-700"><i class="fa-solid fa-arrow-left text-xs"></i></button>
+                    <h3 class="font-bold text-base text-purple-400">ইউনিক গল্প ও জোক্স</h3>
+                </div>
+                <div class="space-y-3"><h4 class="font-bold text-blue-400">ছোট গল্প</h4>${storiesHtml}</div>
+                <div class="space-y-3 pt-3 border-t border-slate-800"><h4 class="font-bold text-amber-400">হাসির জোক্স</h4>${jokesHtml}</div>
+            </div>
+        `;
+    } else if(currentTab === 'profile') {
+        main.innerHTML = `<div class="space-y-4 pb-6 text-xs"><div class="flex items-center space-x-3 border-b border-slate-800 pb-3 mb-2"><button onclick="switchTab('home')" class="bg-slate-900 text-slate-200 w-9 h-9 rounded-full flex items-center justify-center border border-slate-700"><i class="fa-solid fa-arrow-left text-xs"></i></button><h3 class="font-bold text-base text-blue-400">প্রোফাইল</h3></div><div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl text-center space-y-2"><div class="text-white font-bold">${user.identifier}</div></div><button onclick="logoutUser()" class="w-full bg-rose-600/20 text-rose-400 p-3 rounded-xl font-bold">লগআউট</button></div>`;
+    } else if(currentTab === 'payment') {
+        main.innerHTML = `<div class="space-y-4 pb-6"><div class="flex items-center space-x-3 border-b border-slate-800 pb-3 mb-2"><button onclick="switchTab('plans')" class="bg-slate-900 text-slate-200 w-9 h-9 rounded-full flex items-center justify-center border border-slate-700"><i class="fa-solid fa-arrow-left text-xs"></i></button><h3 class="font-bold text-base text-blue-400">পেমেন্ট</h3></div><div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3 text-xs"><select id="pay-method" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white"><option value="বিকাশ">বিকাশ</option><option value="নগদ">নগদ</option></select><input type="text" id="pay-sender-num" placeholder="সেন্ডার নাম্বার" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white"><input type="text" id="pay-trx-id" placeholder="TrxID" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white uppercase"><button onclick="submitPaymentTrx()" class="w-full bg-emerald-600 py-3 rounded-xl font-bold text-white">জমা দিন</button></div></div>`;
+    }
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    const bottomNav = document.getElementById('bottom-nav');
+    if(bottomNav) {
+        bottomNav.innerHTML = `
+            <button onclick="switchTab('home')" class="flex flex-col items-center text-blue-500"><i class="fa-solid fa-house text-lg mb-1"></i><span>হোম</span></button>
+            <button onclick="switchTab('tasks')" class="flex flex-col items-center"><i class="fa-solid fa-list-check text-lg mb-1"></i><span>টাস্ক</span></button>
+            <button onclick="switchTab('plans')" class="flex flex-col items-center"><i class="fa-solid fa-gem text-lg mb-1"></i><span>প্ল্যানস</span></button>
+            <button onclick="switchTab('fun')" class="flex flex-col items-center"><i class="fa-solid fa-book-open text-lg mb-1 text-purple-400"></i><span>গল্প</span></button>
+            <button onclick="switchTab('profile')" class="flex flex-col items-center"><i class="fa-solid fa-user text-lg mb-1 text-amber-400"></i><span>প্রোফাইল</span></button>
+        `;
+    }
+});
+
+function startVideoTask(reward) {
+    const user = getCurrentUser();
+    if(user.videoDone) return;
+    user.balance += parseFloat(reward);
+    user.videoDone = true;
+    saveData();
+    renderContent();
+}
+
+function submitMathTask(reward) {
+    const user = getCurrentUser();
+    if(user.mathDone) return;
+    let ans = parseInt(document.getElementById('math-answer-input').value);
+    if(ans === currentMath.ans) {
+        user.balance += parseFloat(reward);
+        user.mathDone = true;
+        saveData();
+        renderContent();
+    } else { alert("ভুল উত্তর!"); }
+}
+
+function claimStoryReward(storyId, reward) {
+    const user = getCurrentUser();
+    user.readStories = user.readStories || [];
+    if(user.readStories.includes(storyId)) return;
+    user.balance += reward;
+    user.readStories.push(storyId);
+    user.readTaskDone = true;
+    saveData();
+    closeStoryReadMoreModal();
+    renderContent();
+}
+
+function openPaymentPage(planId) {
+    selectedPlanForPurchase = plansData.find(p => p.id === planId);
+    if(selectedPlanForPurchase) switchTab('payment');
+}
+
+function submitPaymentTrx() {
+    const user = getCurrentUser();
+    const method = document.getElementById('pay-method').value;
+    const senderNum = document.getElementById('pay-sender-num').value.trim();
+    const trxId = document.getElementById('pay-trx-id').value.trim();
+    if(!senderNum || !trxId) { alert("সব তথ্য দিন!"); return; }
+    depositRequests.push({ id: Date.now(), identifier: user.identifier, planName: selectedPlanForPurchase.name, amount: selectedPlanForPurchase.price, method, trxId, status: 'Pending' });
+    saveData();
+    alert("রিকোয়েস্ট সফল!");
+    switchTab('plans');
+}
+
+function openWithdrawModal() {
+    const user = getCurrentUser();
+    let amount = prompt("পরিমাণ:", "200");
+    if(amount && !isNaN(amount)) {
+        if(parseFloat(amount) > user.balance) { alert("অপর্যাপ্ত ব্যালেন্স!"); return; }
+        let number = prompt("ওয়ালেট নাম্বার:");
+        if(number) {
+            user.balance -= parseFloat(amount);
+            withdrawRequests.push({ id: Date.now(), identifier: user.identifier, method: 'বিকাশ', amount: parseFloat(amount), number, status: 'Pending' });
+            saveData();
+            alert("উইথড্র রিকোয়েস্ট জমা হয়েছে!");
+            renderContent();
+        }
+    }
+}
+
+function renderAuth() {
+    const main = document.getElementById('main-content');
+    document.getElementById('bottom-nav')?.classList.add('hidden');
+    document.getElementById('app-header')?.classList.add('hidden');
+
+    if (authMode === 'login') {
+        main.innerHTML = `<div class="space-y-6 pt-10 pb-6"><div class="text-center font-black text-xl text-white">Task Bd Official</div><div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4 text-xs"><input type="text" id="login-id" placeholder="ফোন নাম্বার" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white"><input type="password" id="login-pass" placeholder="পাসওয়ার্ড" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white"><button onclick="handleLogin()" class="w-full bg-blue-600 py-3 rounded-xl font-bold text-white">লগইন</button></div><div class="text-center text-xs"><span onclick="authMode='signup'; renderAuth();" class="text-blue-400 cursor-pointer">রেজিস্ট্রার করুন</span></div></div>`;
+    } else {
+        main.innerHTML = `<div class="space-y-6 pt-8 pb-6"><div class="text-center font-black text-xl text-white">রেজিস্ট্রেশন</div><div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-3 text-xs"><input type="text" id="signup-id" placeholder="ফোন নাম্বার" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white"><input type="password" id="signup-pass" placeholder="পাসওয়ার্ড" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white"><input type="password" id="signup-pin" maxlength="4" placeholder="উইথড্র পিন (৪ ডিজিট)" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white"><button onclick="handleSignup()" class="w-full bg-emerald-600 py-3 rounded-xl font-bold text-white">সাইন আপ</button></div><div class="text-center text-xs"><span onclick="authMode='login'; renderAuth();" class="text-blue-400 cursor-pointer">লগইন করুন</span></div></div>`;
+    }
+}
+
+function handleSignup() {
+    const identifier = document.getElementById('signup-id').value.trim();
+    const pass = document.getElementById('signup-pass').value.trim();
+    const txPin = document.getElementById('signup-pin').value.trim();
+    if(!identifier || !pass || !txPin) { alert("সব পূরণ করুন!"); return; }
+    usersList.push({ identifier, password: pass, transactionPin: txPin, balance: 50, recharge: 0, dailyEarnings: 30, notifications: [] });
+    loggedInUserKey = identifier;
+    saveData();
+    switchTab('home');
+}
+
+function handleLogin() {
+    const identifier = document.getElementById('login-id').value.trim();
+    const pass = document.getElementById('login-pass').value.trim();
+    let u = usersList.find(item => item.identifier === identifier && item.password === pass);
+    if(u) { loggedInUserKey = u.identifier; saveData(); switchTab('home'); } else { alert("ভুল তথ্য!"); }
+}
+
+function logoutUser() { loggedInUserKey = null; saveData(); renderAuth(); }
+
+if(loggedInUserKey) { switchTab('home'); } else { renderAuth(); }
